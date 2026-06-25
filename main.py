@@ -34,11 +34,31 @@ async def get_all_customers():
             response = []
             for row in rows:
                 response.append({
-                    "id": row['id'],
-                    "email": row['email'],
-                    "name": row["name"],
-                    "city": row["city"]
+                    "id": row[0],
+                    "email": row[1],
+                    "name": row[2],
+                    "city": row[3]
                 })
         return response
+    except psycopg2.OperationalError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# async route to POST customer
+@app.post('/customers', status_code=201)
+async def add_customer(customer: Customer):
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO customers (email, name, city) VALUES (%s, %s, %s) RETURNING id",
+            (customer.email, customer.name, customer.city))
+            new_id = cursor.fetchone()[0]
+            conn.commit()
+        return {
+            "id": new_id,
+            "email": customer.email,
+            "name": customer.name,
+            "city": customer.city
+        }
     except psycopg2.OperationalError as e:
         raise HTTPException(status_code=500, detail=str(e))
