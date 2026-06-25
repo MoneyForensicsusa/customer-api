@@ -62,3 +62,17 @@ async def add_customer(customer: Customer):
         }
     except psycopg2.OperationalError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# async route for delete customer
+@app.delete('/customers/{customer_id}')
+async def delete_customer(customer_id: int):
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM customers WHERE id = %s", (customer_id,))
+            if cursor.rowcount == 0:
+                raise HTTPException(status=404, detail="Customer not found")
+            conn.commit()
+        return {"message": f"Customer {customer_id} deleted"}
+    except psycopg2.OperationalError as e:
+        raise HTTPException(status_code=500, detail=str(e))

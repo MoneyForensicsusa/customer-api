@@ -10,6 +10,7 @@ def test_customer():
     response = client.post('/customers/', json=data)
     created = response.json()
 
-    yield created
+    yield response
 
     client.delete(f'/customers/{created["id"]}')
+
