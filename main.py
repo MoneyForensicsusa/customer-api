@@ -63,6 +63,28 @@ async def add_customer(customer: Customer):
     except psycopg2.OperationalError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# async route to GET customers stats
+@app.get('/customers/stats')
+async def get_customers_stats():
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM customers")
+            total = cursor.fetchone()[0]
+
+            cities = []
+            cursor.execute("SELECT city, COUNT(*) AS total FROM customers GROUP BY city ORDER BY total DESC")
+            rows = cursor.fetchall()
+            for row in rows:
+                cities.append({"city": row[0], "total": row[1]})
+        return {
+            'total_customers': total,
+            'cities_stats': cities
+        }
+    except psycopg2.OperationalError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # async route for delete customer
 @app.delete('/customers/{customer_id}')
 async def delete_customer(customer_id: int):
@@ -117,3 +139,5 @@ async def update_customer(customer_id: int, customer: Customer):
         }
     except psycopg2.OperationalError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
