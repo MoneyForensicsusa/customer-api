@@ -36,3 +36,19 @@ def test_get_customer(test_customer):
     assert data['email'] == 'alpha.beta@gmail.com'
     assert data['name'] == 'Alpha beta'
     assert data['city'] == 'Austin'
+
+#Test for PUT customer
+def test_put_customer(test_customer):
+    customer_id = test_customer.json()['id']
+    updated_data = {
+        'email': 'new.gmail.com',
+        'name': 'new name',
+        'city': 'new city'
+    }
+    response = client.put(f'/customers/{customer_id}', json=updated_data)
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data['email'] == 'new.gmail.com'
+    assert data['name'] == 'new name'
+    assert data['city'] == 'new city'

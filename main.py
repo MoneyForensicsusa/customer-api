@@ -111,9 +111,9 @@ async def update_customer(customer_id: int, customer: Customer):
             conn.commit()
         return {
             "message": f"Customer {customer_id} updated",
-            "new_email": updated_row[0],
-            "new_name": updated_row[1],
-            "new_city": updated_row[2]
+            "email": updated_row[1],
+            "name": updated_row[2],
+            "city": updated_row[3]
         }
     except psycopg2.OperationalError as e:
         raise HTTPException(status_code=500, detail=str(e))
