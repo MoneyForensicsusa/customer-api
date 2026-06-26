@@ -17,4 +17,13 @@ def test_post_customers(test_customer):
     assert data['email'] == 'alpha.beta@gmail.com'
     assert data['name'] == 'Alpha beta'
     assert data['city'] =='Austin'
-    
+
+#Test for DELETE customer
+def test_delete_customer(test_customer):
+    customer_id = test_customer.json()['id']
+    response = client.delete(f'/customers/{customer_id}')
+    assert response.status_code == 200
+    get_response = client.get(f'/customers/{customer_id}')
+    assert get_response.status_code == 404
+
+

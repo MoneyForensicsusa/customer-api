@@ -71,8 +71,29 @@ async def delete_customer(customer_id: int):
             cursor = conn.cursor()
             cursor.execute("DELETE FROM customers WHERE id = %s", (customer_id,))
             if cursor.rowcount == 0:
-                raise HTTPException(status=404, detail="Customer not found")
+                raise HTTPException(status_code=404, detail="Customer not found")
             conn.commit()
         return {"message": f"Customer {customer_id} deleted"}
     except psycopg2.OperationalError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+#async route to GET customer by id
+@app.get('/customers/{customer_id}')
+async def get_customer(customer_id: int):
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(" SELECT id, email, name, city FROM customers WHERE id = %s",
+            (customer_id,))
+            row = cursor.fetchone()
+            if row is None:
+                raise HTTPException(status_code=404, detail='Customer not found')
+        return {
+            "id": row[0],
+            "email": row[1],
+            'name': row[2],
+            "city": row[3]
+        }
+    except psycopg2.OperationalError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
