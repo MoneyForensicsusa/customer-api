@@ -97,3 +97,23 @@ async def get_customer(customer_id: int):
     except psycopg2.OperationalError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+#async route to PUT customers
+@app.put('/customers/{customer_id}')
+async def update_customer(customer_id: int, customer: Customer):
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE customers SET email = %s, name = %s, city = %s WHERE id = %s RETURNING id, email, name, city",
+            (customer.email, customer.name, customer.city, customer_id))
+            updated_row = cursor.fetchone()
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=404, detail='Customer not found')
+            conn.commit()
+        return {
+            "message": f"Customer {customer_id} updated",
+            "new_email": updated_row[0],
+            "new_name": updated_row[1],
+            "new_city": updated_row[2]
+        }
+    except psycopg2.OperationalError as e:
+        raise HTTPException(status_code=500, detail=str(e))
