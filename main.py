@@ -85,6 +85,35 @@ async def get_customers_stats():
     except psycopg2.OperationalError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+#async route to search customers by city or name
+@app.get('/customers/search')
+async def search_customers(city: str = None, name: str = None):
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            if city:
+                cursor.execute("SELECT id, email, name, city FROM customers WHERE city ILIKE %s",
+                (f'%{city}%',))
+            elif name:
+                cursor.execute("SELECT id, email, name, city FROM customers WHERE name ILIKE %s",
+                (f'%{name}%',))
+            else:
+                raise HTTPException(status_code=400, detail='Provide city or name to search')
+            rows = cursor.fetchall()
+            data = []
+            for row in rows:
+                data.append({
+                    'id': row[0],
+                    'email': row[1],
+                    'name': row[2],
+                    'city': row[3]
+                })
+        return data
+    except psycopg2.OperationalError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # async route for delete customer
 @app.delete('/customers/{customer_id}')
 async def delete_customer(customer_id: int):
@@ -139,5 +168,6 @@ async def update_customer(customer_id: int, customer: Customer):
         }
     except psycopg2.OperationalError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
