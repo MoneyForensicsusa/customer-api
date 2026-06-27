@@ -52,3 +52,14 @@ def test_put_customer(test_customer):
     assert data['email'] == 'new.gmail.com'
     assert data['name'] == 'new name'
     assert data['city'] == 'new city'
+
+#Test for GET customers stats route
+def test_get_customer_stats(test_customer):
+    response = client.get('/customers/stats')
+    assert response.status_code == 200
+
+    data = response.json()
+    assert 'total_customers' in data
+    assert 'cities_stats' in data
+    assert data["total_customers"] >= 1
+    assert isinstance(data['cities_stats'], list) 
