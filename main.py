@@ -25,11 +25,12 @@ def get_db():
 
 # async route to get te whole Customers table
 @app.get('/customers')
-async def get_all_customers():
+async def get_all_customers(page: int = 1, page_size: int = 10):
     try:
         with get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT id, email, name, city FROM customers')
+            offset = (page - 1) * page_size
+            cursor.execute('SELECT id, email, name, city FROM customers ORDER BY id LIMIT %s OFFSET %s', (page_size, offset))
             rows = cursor.fetchall()
             response = []
             for row in rows:
@@ -39,7 +40,10 @@ async def get_all_customers():
                     "name": row[2],
                     "city": row[3]
                 })
-        return response
+        return {
+            "page": page,
+            "page_size": page_size,
+            "customers": response}
     except psycopg2.OperationalError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -168,6 +172,8 @@ async def update_customer(customer_id: int, customer: Customer):
         }
     except psycopg2.OperationalError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
 
 
 
