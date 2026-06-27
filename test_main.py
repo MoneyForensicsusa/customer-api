@@ -63,3 +63,19 @@ def test_get_customer_stats(test_customer):
     assert 'cities_stats' in data
     assert data["total_customers"] >= 1
     assert isinstance(data['cities_stats'], list) 
+
+#Test for Search customers route
+def test_search_customers():
+    data = {'email': 'search@gmail.com', 'name': 'Search_test', 'city': 'Testcity'}
+    created = client.post('/customers', json=data)
+    customer_id = created.json()['id']
+
+    response = client.get('/customers/search', params={'city': 'Testcity'})
+    assert response.status_code == 200
+
+    result = response.json()
+    assert isinstance(result, list)
+    assert len(result) > 0
+    assert result[0]["city"] == "Testcity"
+
+    client.delete(f'/customers/{customer_id}')
