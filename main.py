@@ -130,9 +130,18 @@ async def bulk_upload(customers: List[Customer]):
                 values.append((c.email, c.name, c.city))
             cursor.executemany("INSERT INTO customers (email, name, city) VALUES (%s, %s, %s)",
             values)
-            conn.commit
+            emails = []
+            for c in customers:
+                emails.append(c.email)
+            cursor.execute("SELECT id FROM customers WHERE email = ANY(%s)", (emails,))
+            rows = cursor.fetchall()
+            ids = []
+            for row in rows:
+                ids.append(row[0])
+            conn.commit()
         return {
-            'message': f'{len(customers)} customers imported successfully'
+            'message': f'{len(customers)} customers imported successfully',
+            'ids': ids
         }
     except psycopg2.errors.UniqueViolation as e:
         raise HTTPException(status_code=400, detail='One or more emails already exist')
