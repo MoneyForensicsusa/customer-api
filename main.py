@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, EmailStr
+from typing import List
 import psycopg2
 from dotenv import load_dotenv
 import os
@@ -10,9 +11,9 @@ app = FastAPI()
 
 # Defining Customer model
 class Customer (BaseModel):
-    email: str
+    email: EmailStr
     name: str
-    city: str
+    city: str = Field(min_length=2)
 
 # Database connection function
 def get_db():
@@ -116,6 +117,28 @@ async def search_customers(city: str = None, name: str = None):
         return data
     except psycopg2.OperationalError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+#async route that bulk imports list of customers
+@app.post('/customers/bulk', status_code=201)
+async def bulk_upload(customers: List[Customer]):
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            values = []
+            for c in customers:
+                values.append((c.email, c.name, c.city))
+            cursor.executemany("INSERT INTO customers (email, name, city) VALUES (%s, %s, %s)",
+            values)
+            conn.commit
+        return {
+            'message': f'{len(customers)} customers imported successfully'
+        }
+    except psycopg2.errors.UniqueViolation as e:
+        raise HTTPException(status_code=400, detail='One or more emails already exist')
+    except psycopg2.OperationalError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 # async route for delete customer
