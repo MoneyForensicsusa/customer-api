@@ -7,6 +7,15 @@ import os
 
 load_dotenv()
 
+#startup validation - fail fast if secrets missing
+REQUIRED_ENV = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD']
+missing =[]
+for variable in REQUIRED_ENV:
+    if not os.getenv(variable):
+        missing.append(variable)
+if missing:
+    raise RuntimeError(f'Missing reuired environment variables: {missing}')
+
 app = FastAPI()
 
 # Defining Customer model
