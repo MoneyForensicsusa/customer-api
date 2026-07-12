@@ -40,6 +40,13 @@ def check_health():
         "status": "ok"
     }
 
+# version endpoint
+@app.get('/version')
+def version():
+    return{
+        "app": "customer-api",
+        "version": "1.0.0"
+    }
 
 # async route to get te whole Customers table
 @app.get('/customers')
