@@ -33,6 +33,14 @@ def get_db():
         password=os.getenv('DB_PASSWORD')
     )
 
+# route for health check
+@app.get('/health')
+def check_health():
+    return {
+        "status": "ok"
+    }
+
+
 # async route to get te whole Customers table
 @app.get('/customers')
 async def get_all_customers(page: int = 1, page_size: int = 10):
