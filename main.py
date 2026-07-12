@@ -2,6 +2,9 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, EmailStr
 from typing import List
 import psycopg2
+import logging
+from datetime import datetime
+from fastapi import Request
 from dotenv import load_dotenv
 import os
 
@@ -17,6 +20,17 @@ if missing:
     raise RuntimeError(f'Missing reuired environment variables: {missing}')
 
 app = FastAPI()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(message)s"
+)
+
+@app.middleware('http')
+async def log_requests(request: Request, call_next):
+    logging.info(f'{request.method} {request.url.path}')
+    response = await call_next(request)
+    return response
 
 # Defining Customer model
 class Customer (BaseModel):
