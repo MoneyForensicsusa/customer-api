@@ -5,12 +5,14 @@ from typing import List
 from database import get_connection
 import logging
 from datetime import datetime
+from monitoring import setup_monitoring
 from fastapi import Request
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
+setup_monitoring()
 
 app = FastAPI()
 
