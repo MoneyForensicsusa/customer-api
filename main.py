@@ -1,3 +1,10 @@
+from dotenv import load_dotenv
+from monitoring import setup_monitoring
+
+load_dotenv()
+
+setup_monitoring()
+
 from mssql_python.exceptions import OperationalError, IntegrityError
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, EmailStr
@@ -7,12 +14,7 @@ import logging
 from datetime import datetime
 from monitoring import setup_monitoring
 from fastapi import Request
-from dotenv import load_dotenv
-import os
 
-load_dotenv()
-
-setup_monitoring()
 
 app = FastAPI()
 
