@@ -1,14 +1,14 @@
-from os import getenv
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Depends
+from keyvault import get_secret
 
-EXPECTED_API_KEY = getenv("API_KEY")
+def get_expected_api_key() -> str:
+    return get_secret("customer-api-key")
 
-if EXPECTED_API_KEY is None:
-    raise RuntimeError('API_KEY environment variable is not set')
 
-def verify_api_key(api_key: str | None = Header(None, alias="X-Api-Key")):
-    if api_key != EXPECTED_API_KEY:
+def verify_api_key(api_key: str | None = Header(None, alias="X-Api-Key"),
+    expected_api_key: str = Depends(get_expected_api_key)):
+    if api_key != expected_api_key:
         raise HTTPException(
             status_code=401,
-            detail="Invalid API Key"
+            detail="Invalid or missing API Key"
         )

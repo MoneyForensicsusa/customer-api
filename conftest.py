@@ -1,9 +1,15 @@
-import os
-os.environ["API_KEY"] = "test-api-key"
-
 import pytest
 from fastapi.testclient import TestClient
+
+from auth import get_expected_api_key
 from main import app
+
+TEST_API_KEY = "test-api-key"
+
+def fake_get_expected_api_key() -> str:
+    return TEST_API_KEY
+
+app.dependency_overrides[get_expected_api_key] = fake_get_expected_api_key
 
 client = TestClient(app)
 
