@@ -14,6 +14,8 @@ import logging
 from datetime import datetime
 from monitoring import setup_monitoring
 from fastapi import Request
+from fastapi import Depends
+from auth import verify_api_key
 
 
 app = FastAPI()
@@ -56,7 +58,7 @@ def version():
 
 # async route to get te whole Customers table
 @app.get("/customers")
-def get_all_customers(page: int = 1, page_size: int = 10):
+def get_all_customers(page: int = 1, page_size: int = 10, _: None = Depends(verify_api_key)):
     try:
         with get_db() as conn:
             cursor = conn.cursor()

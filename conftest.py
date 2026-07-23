@@ -1,3 +1,6 @@
+import os
+os.environ["API_KEY"] = "test-api-key"
+
 import pytest
 from fastapi.testclient import TestClient
 from main import app

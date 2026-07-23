@@ -1,11 +1,12 @@
 from fastapi.testclient import TestClient
 from main import app
 
+
 client = TestClient(app)
 
 #Test for get customers
 def test_get_customers():
-    response = client.get('/customers')
+    response = client.get('/customers', headers={"X-Api-Key": "test-api-key"})
     assert response.status_code == 200
     data = response.json()
     assert 'customers' in data
@@ -97,3 +98,16 @@ def test_bulk_post():
     ids = response.json()['ids']
     for id in ids:
         client.delete(f'/customers/{id}')
+
+
+def test_get_customers_without_api_key():
+    response = client.get("/customers")
+    assert response.status_code == 401
+
+
+def test_get_customers_with_wrong_api_key():
+    response = client.get(
+        "/customers",
+        headers={"X-Api-Key": "wrong-key"}
+    )
+    assert response.status_code == 401
