@@ -9,7 +9,7 @@ from mssql_python.exceptions import OperationalError, IntegrityError
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, EmailStr
 from typing import List
-from database import get_connection
+from database import get_db
 import logging
 from datetime import datetime
 from monitoring import setup_monitoring
@@ -37,9 +37,6 @@ class Customer (BaseModel):
     name: str
     city: str = Field(min_length=2)
 
-# Database connection function
-def get_db():
-    return get_connection()
 
 # route for health check
 @app.get('/health')
@@ -58,11 +55,16 @@ def version():
 
 # async route to get te whole Customers table
 @app.get("/customers")
-def get_all_customers(page: int = 1, page_size: int = 10, _: None = Depends(verify_api_key)):
+def get_all_customers(
+    page: int = 1,
+    page_size: int = 10,
+    _: None = Depends(verify_api_key),
+    conn=Depends(get_db)
+):
     try:
-        with get_db() as conn:
-            cursor = conn.cursor()
+        cursor = conn.cursor()
 
+        try:
             offset = (page - 1) * page_size
 
             cursor.execute(
@@ -82,19 +84,20 @@ def get_all_customers(page: int = 1, page_size: int = 10, _: None = Depends(veri
 
             rows = cursor.fetchall()
 
-            response = []
-
-            for row in rows:
-                response.append(
-                    {
-                        "id": row[0],
-                        "email": row[1],
-                        "name": row[2],
-                        "city": row[3],
-                    }
-                )
-
+        finally:
             cursor.close()
+
+        response = []
+
+        for row in rows:
+            response.append(
+                {
+                    "id": row[0],
+                    "email": row[1],
+                    "name": row[2],
+                    "city": row[3],
+                }
+            )
 
         return {
             "page": page,
@@ -108,11 +111,11 @@ def get_all_customers(page: int = 1, page_size: int = 10, _: None = Depends(veri
 
 # async route to POST customer
 @app.post("/customers", status_code=201)
-def add_customer(customer: Customer):
+def add_customer(customer: Customer, conn=Depends(get_db)):
     try:
-        with get_db() as conn:
-            cursor = conn.cursor()
+        cursor = conn.cursor()
 
+        try:
             cursor.execute(
                 """
                 INSERT INTO dbo.customers (email, name, city)
@@ -129,6 +132,8 @@ def add_customer(customer: Customer):
             new_id = cursor.fetchone()[0]
 
             conn.commit()
+
+        finally:
             cursor.close()
 
         return {
@@ -137,8 +142,11 @@ def add_customer(customer: Customer):
             "name": customer.name,
             "city": customer.city,
         }
-
+    
+    
     except IntegrityError:
+        conn.rollback()
+        
         raise HTTPException(
             status_code=409,
             detail="A customer with this email already exists.",
@@ -153,11 +161,13 @@ def add_customer(customer: Customer):
 
 # async route to GET customers stats
 @app.get("/customers/stats")
-def get_customers_stats():
+def get_customers_stats(
+    conn=Depends(get_db)
+):
     try:
-        with get_db() as conn:
-            cursor = conn.cursor()
+        cursor = conn.cursor()
 
+        try:
             cursor.execute(
                 """
                 SELECT COUNT(*)
@@ -180,17 +190,18 @@ def get_customers_stats():
 
             rows = cursor.fetchall()
 
-            cities = []
-
-            for row in rows:
-                cities.append(
-                    {
-                        "city": row[0],
-                        "total": row[1],
-                    }
-                )
-
+        finally:
             cursor.close()
+
+        cities = []
+
+        for row in rows:
+            cities.append(
+                {
+                    "city": row[0],
+                    "total": row[1],
+                }
+            )
 
         return {
             "total_customers": total,
@@ -204,16 +215,18 @@ def get_customers_stats():
         )
 
 
+
 #async route to search customers by city or name
 @app.get("/customers/search")
 def search_customers(
     city: str | None = None,
     name: str | None = None,
+    conn=Depends(get_db),
 ):
     try:
-        with get_db() as conn:
-            cursor = conn.cursor()
+        cursor = conn.cursor()
 
+        try:
             if city:
                 cursor.execute(
                     """
@@ -250,19 +263,20 @@ def search_customers(
 
             rows = cursor.fetchall()
 
-            data = []
-
-            for row in rows:
-                data.append(
-                    {
-                        "id": row[0],
-                        "email": row[1],
-                        "name": row[2],
-                        "city": row[3],
-                    }
-                )
-
+        finally:
             cursor.close()
+
+        data = []
+
+        for row in rows:
+            data.append(
+                {
+                    "id": row[0],
+                    "email": row[1],
+                    "name": row[2],
+                    "city": row[3],
+                }
+            )
 
         return data
 
@@ -271,11 +285,15 @@ def search_customers(
             status_code=500,
             detail=str(error),
         )
+        
 
 
 #async route that bulk imports list of customers
 @app.post("/customers/bulk", status_code=201)
-def bulk_upload(customers: List[Customer]):
+def bulk_upload(
+    customers: List[Customer],
+    conn=Depends(get_db)
+):
     if not customers:
         raise HTTPException(
             status_code=400,
@@ -283,40 +301,39 @@ def bulk_upload(customers: List[Customer]):
         )
 
     try:
-        with get_db() as conn:
-            cursor = conn.cursor()
-            ids = []
+        cursor = conn.cursor()
+        ids = []
 
-            try:
-                for customer in customers:
-                    cursor.execute(
-                        """
-                        INSERT INTO dbo.customers (email, name, city)
-                        OUTPUT INSERTED.id
-                        VALUES (?, ?, ?);
-                        """,
-                        (
-                            str(customer.email),
-                            customer.name,
-                            customer.city,
-                        ),
-                    )
-
-                    new_id = cursor.fetchone()[0]
-                    ids.append(new_id)
-
-                conn.commit()
-
-            except IntegrityError:
-                conn.rollback()
-
-                raise HTTPException(
-                    status_code=409,
-                    detail="One or more emails already exist.",
+        try:
+            for customer in customers:
+                cursor.execute(
+                    """
+                    INSERT INTO dbo.customers (email, name, city)
+                    OUTPUT INSERTED.id
+                    VALUES (?, ?, ?);
+                    """,
+                    (
+                        str(customer.email),
+                        customer.name,
+                        customer.city,
+                    ),
                 )
 
-            finally:
-                cursor.close()
+                new_id = cursor.fetchone()[0]
+                ids.append(new_id)
+
+            conn.commit()
+
+        except IntegrityError:
+            conn.rollback()
+
+            raise HTTPException(
+                status_code=409,
+                detail="One or more emails already exist.",
+            )
+
+        finally:
+            cursor.close()
 
         return {
             "message": f"{len(customers)} customers imported successfully",
@@ -333,33 +350,35 @@ def bulk_upload(customers: List[Customer]):
 
 # async route for delete customer
 @app.delete("/customers/{customer_id}")
-def delete_customer(customer_id: int):
+def delete_customer(
+    customer_id: int,
+    conn=Depends(get_db),
+):
     try:
-        with get_db() as conn:
-            cursor = conn.cursor()
+        cursor = conn.cursor()
 
-            try:
-                cursor.execute(
-                    """
-                    DELETE FROM dbo.customers
-                    OUTPUT DELETED.id
-                    WHERE id = ?;
-                    """,
-                    (customer_id,),
+        try:
+            cursor.execute(
+                """
+                DELETE FROM dbo.customers
+                OUTPUT DELETED.id
+                WHERE id = ?;
+                """,
+                (customer_id,),
+            )
+
+            deleted_row = cursor.fetchone()
+
+            if deleted_row is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Customer not found",
                 )
 
-                deleted_row = cursor.fetchone()
+            conn.commit()
 
-                if deleted_row is None:
-                    raise HTTPException(
-                        status_code=404,
-                        detail="Customer not found",
-                    )
-
-                conn.commit()
-
-            finally:
-                cursor.close()
+        finally:
+            cursor.close()
 
         return {
             "message": f"Customer {customer_id} deleted"
@@ -371,31 +390,34 @@ def delete_customer(customer_id: int):
             detail=str(error),
         )
 
+
 #async route to GET customer by id
 @app.get("/customers/{customer_id}")
-def get_customer(customer_id: int):
+def get_customer(
+    customer_id: int,
+    conn=Depends(get_db),
+):
     try:
-        with get_db() as conn:
-            cursor = conn.cursor()
+        cursor = conn.cursor()
 
-            try:
-                cursor.execute(
-                    """
-                    SELECT
-                        id,
-                        email,
-                        name,
-                        city
-                    FROM dbo.customers
-                    WHERE id = ?;
-                    """,
-                    (customer_id,),
-                )
+        try:
+            cursor.execute(
+                """
+                SELECT
+                    id,
+                    email,
+                    name,
+                    city
+                FROM dbo.customers
+                WHERE id = ?;
+                """,
+                (customer_id,),
+            )
 
-                row = cursor.fetchone()
+            row = cursor.fetchone()
 
-            finally:
-                cursor.close()
+        finally:
+            cursor.close()
 
         if row is None:
             raise HTTPException(
@@ -418,53 +440,57 @@ def get_customer(customer_id: int):
 
 #async route to PUT customers
 @app.put("/customers/{customer_id}")
-def update_customer(customer_id: int, customer: Customer):
+def update_customer(
+    customer_id: int,
+    customer: Customer,
+    conn=Depends(get_db),
+):
     try:
-        with get_db() as conn:
-            cursor = conn.cursor()
+        cursor = conn.cursor()
 
-            try:
-                cursor.execute(
-                    """
-                    UPDATE dbo.customers
-                    SET
-                        email = ?,
-                        name = ?,
-                        city = ?
-                    OUTPUT
-                        INSERTED.id,
-                        INSERTED.email,
-                        INSERTED.name,
-                        INSERTED.city
-                    WHERE id = ?;
-                    """,
-                    (
-                        str(customer.email),
-                        customer.name,
-                        customer.city,
-                        customer_id,
-                    ),
-                )
+        try:
+            cursor.execute(
+                """
+                UPDATE dbo.customers
+                SET
+                    email = ?,
+                    name = ?,
+                    city = ?
+                OUTPUT
+                    INSERTED.id,
+                    INSERTED.email,
+                    INSERTED.name,
+                    INSERTED.city
+                WHERE id = ?;
+                """,
+                (
+                    str(customer.email),
+                    customer.name,
+                    customer.city,
+                    customer_id,
+                ),
+            )
 
-                updated_row = cursor.fetchone()
+            updated_row = cursor.fetchone()
 
-                if updated_row is None:
-                    raise HTTPException(
-                        status_code=404,
-                        detail="Customer not found",
-                    )
-
-                conn.commit()
-
-            except IntegrityError:
-                conn.rollback()
+            if updated_row is None:
                 raise HTTPException(
-                    status_code=409,
-                    detail="A customer with this email already exists.",
+                    status_code=404,
+                    detail="Customer not found",
                 )
 
-            finally:
-                cursor.close()
+            conn.commit()
+
+        except IntegrityError:
+            conn.rollback()
+
+            raise HTTPException(
+                status_code=409,
+                detail="A customer with this email already exists.",
+            )
+
+        finally:
+            cursor.close()
 
         return {
             "message": f"Customer {customer_id} updated",
@@ -478,7 +504,8 @@ def update_customer(customer_id: int, customer: Customer):
         raise HTTPException(
             status_code=500,
             detail=str(error),
-        )
+        )             
+             
 
 
 
