@@ -6,20 +6,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-vault_url = getenv("KEY_VAULT_URL")
 
-if not vault_url:
-    raise RuntimeError("KEY_VAULT_URL environment variable is missing")
-
-credential = DefaultAzureCredential()
-
-secret_client = SecretClient(
-    vault_url=vault_url,
-    credential=credential
-)
 
 def get_secret(secret_name: str) -> str:
+    vault_url = getenv("KEY_VAULT_URL")
+
+    if not vault_url:
+        raise RuntimeError("KEY_VAULT_URL environment variable is missing")
+
+    credential = DefaultAzureCredential()
+
+    secret_client = SecretClient(
+        vault_url=vault_url,
+        credential=credential
+    )
+
     secret = secret_client.get_secret(secret_name)
+
     return secret.value
 
 if __name__ == "__main__":
