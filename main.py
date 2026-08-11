@@ -111,7 +111,7 @@ def get_all_customers(
 
 # async route to POST customer
 @app.post("/customers", status_code=201)
-def add_customer(customer: Customer, conn=Depends(get_db)):
+def add_customer(customer: Customer, _: None = Depends(verify_api_key), conn=Depends(get_db)):
     try:
         cursor = conn.cursor()
 
@@ -162,6 +162,7 @@ def add_customer(customer: Customer, conn=Depends(get_db)):
 # async route to GET customers stats
 @app.get("/customers/stats")
 def get_customers_stats(
+    _: None = Depends(verify_api_key),
     conn=Depends(get_db)
 ):
     try:
@@ -221,6 +222,7 @@ def get_customers_stats(
 def search_customers(
     city: str | None = None,
     name: str | None = None,
+    _: None = Depends(verify_api_key),
     conn=Depends(get_db),
 ):
     try:
@@ -292,6 +294,7 @@ def search_customers(
 @app.post("/customers/bulk", status_code=201)
 def bulk_upload(
     customers: List[Customer],
+    _: None = Depends(verify_api_key),
     conn=Depends(get_db)
 ):
     if not customers:
@@ -352,6 +355,7 @@ def bulk_upload(
 @app.delete("/customers/{customer_id}")
 def delete_customer(
     customer_id: int,
+    _: None = Depends(verify_api_key),
     conn=Depends(get_db),
 ):
     try:
@@ -395,6 +399,7 @@ def delete_customer(
 @app.get("/customers/{customer_id}")
 def get_customer(
     customer_id: int,
+    _: None = Depends(verify_api_key),
     conn=Depends(get_db),
 ):
     try:
@@ -443,6 +448,7 @@ def get_customer(
 def update_customer(
     customer_id: int,
     customer: Customer,
+    _: None = Depends(verify_api_key),
     conn=Depends(get_db),
 ):
     try:

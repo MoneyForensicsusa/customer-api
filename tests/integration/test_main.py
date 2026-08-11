@@ -4,9 +4,13 @@ from main import app
 
 client = TestClient(app)
 
+TEST_HEADERS = {
+    "X-Api-Key": "test-api-key"
+}
+
 #Test for get customers
 def test_get_customers():
-    response = client.get('/customers', headers={"X-Api-Key": "test-api-key"})
+    response = client.get('/customers', headers=TEST_HEADERS)
     assert response.status_code == 200
     data = response.json()
     assert 'customers' in data
@@ -24,15 +28,15 @@ def test_post_customers(test_customer):
 #Test for DELETE customer
 def test_delete_customer(test_customer):
     customer_id = test_customer.json()['id']
-    response = client.delete(f'/customers/{customer_id}')
+    response = client.delete(f'/customers/{customer_id}', headers=TEST_HEADERS)
     assert response.status_code == 200
-    get_response = client.get(f'/customers/{customer_id}')
+    get_response = client.get(f'/customers/{customer_id}', headers=TEST_HEADERS)
     assert get_response.status_code == 404
 
 #Test for GET customer
 def test_get_customer(test_customer):
     customer_id = test_customer.json()['id']
-    response = client.get(f'/customers/{customer_id}')
+    response = client.get(f'/customers/{customer_id}', headers=TEST_HEADERS)
     assert response.status_code == 200
     data = response.json()
     assert 'id' in data 
@@ -48,7 +52,7 @@ def test_put_customer(test_customer):
         'name': 'new name',
         'city': 'new city'
     }
-    response = client.put(f'/customers/{customer_id}', json=updated_data)
+    response = client.put(f'/customers/{customer_id}', json=updated_data, headers=TEST_HEADERS)
     assert response.status_code == 200
 
     data = response.json()
@@ -58,7 +62,7 @@ def test_put_customer(test_customer):
 
 #Test for GET customers stats route
 def test_get_customer_stats(test_customer):
-    response = client.get('/customers/stats')
+    response = client.get('/customers/stats', headers=TEST_HEADERS)
     assert response.status_code == 200
 
     data = response.json()
@@ -70,10 +74,10 @@ def test_get_customer_stats(test_customer):
 #Test for Search customers route
 def test_search_customers():
     data = {'email': 'search@gmail.com', 'name': 'Search_test', 'city': 'Testcity'}
-    created = client.post('/customers', json=data)
+    created = client.post('/customers', json=data, headers=TEST_HEADERS)
     customer_id = created.json()['id']
 
-    response = client.get('/customers/search', params={'city': 'Testcity'})
+    response = client.get('/customers/search', params={'city': 'Testcity'}, headers=TEST_HEADERS)
     assert response.status_code == 200
 
     result = response.json()
@@ -81,7 +85,7 @@ def test_search_customers():
     assert len(result) > 0
     assert result[0]["city"] == "Testcity"
 
-    client.delete(f'/customers/{customer_id}')
+    client.delete(f'/customers/{customer_id}', headers=TEST_HEADERS)
 
 #Test for bulk Post route
 def test_bulk_post():
@@ -90,14 +94,14 @@ def test_bulk_post():
         {"email": "sarai.johnson@gmail.com", "name": "Sarai Johnson", "city": "Dallas"},
         {"email": "michelle.brown@gmail.com", "name": "Michelle Brown", "city": "Houston"}
     ]
-    response = client.post('/customers/bulk', json=data)
+    response = client.post('/customers/bulk', json=data, headers=TEST_HEADERS)
     assert response.status_code == 201
     posted = response.json()
     assert len(posted["ids"]) == 3
     
     ids = response.json()['ids']
     for id in ids:
-        client.delete(f'/customers/{id}')
+        client.delete(f'/customers/{id}', headers=TEST_HEADERS)
 
 
 def test_get_customers_without_api_key():
